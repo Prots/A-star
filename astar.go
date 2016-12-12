@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 type Point struct {
@@ -10,6 +11,8 @@ type Point struct {
 	y           int
 	obstruction int
 	parent      *Point
+	g	    int
+	h           int
 }
 
 // 5. Create an empty "opened" list of Points
@@ -24,8 +27,8 @@ const (
 	diagonalWeight = 14
 )
 
-func newPoint(xi, yj, obstruction int) Point {
-	return Point{x: xi, y: yj, obstruction: obstruction}
+func newPoint(xi, yj, obstruction int, parent *Point) Point {
+	return Point{x: xi, y: yj, obstruction: obstruction, parent: parent, g: 0, h: 0}
 }
 
 func main() {
@@ -36,7 +39,7 @@ func main() {
 	for xi := 0; xi < size; xi++ {
 		field[xi] = make([]Point, size)
 		for yj := 0; yj < size; yj++ {
-			field[xi][yj] = newPoint(xi, yj, defObstruction)
+			field[xi][yj] = newPoint(xi, yj, defObstruction, nil)
 		}
 	}
 	fmt.Printf("New empty field: %v\n", field)
@@ -54,6 +57,9 @@ func main() {
 	fmt.Printf("End point: %v\n", endPoint)
 	// 7. Add startPoint to the openedList
 	openedList = append(openedList, &startPoint)
+// ===========================================================================
+
+
 	// 8. Find all neigbourghs for startPoint excluding obstacles and also add them to the openedList
 	neighbours := findNeighbours(&startPoint, field)
 	// 9. Setup startPoint for neigbourghs as a parent point
@@ -123,7 +129,7 @@ func findNeighbours(point *Point, field [][]Point) []*Point {
 }
 
 func manhattenDistance(start, end *Point) float64 {
-	return math.Abs((float64)(end.x - start.x)) + math.Abs((float64)(end.y - start.y))
+	return math.Abs((float64)(end.x-start.x)) + math.Abs((float64)(end.y-start.y))
 }
 
 func evklidDistance(start, end *Point) float64 {
@@ -138,11 +144,13 @@ func evklidDistance(start, end *Point) float64 {
 //	}
 //}
 
-//func findWeight(start, finish, current *Point) float64 {
-//
-//}
+func findWeight(start, finish, current *Point) float64 {
+	hWeight := manhattenDistance(current, finish)
+	gWeight := getBackRoute(start, current)
+	return gWeight + hWeight
+}
 
-func getBackRoute(start, end *Point) int {
+func getBackRoute(start, end *Point) float64 {
 	route := 0
 	if start == end {
 		return 0
@@ -156,5 +164,20 @@ func getBackRoute(start, end *Point) int {
 	if manhattenDistance(end, end.parent) == 2 {
 		route = 14
 	}
-	return route + getBackRoute(start, end.parent)
+	return (float64)(route + getBackRoute(start, end.parent))
+}
+
+func (points []*Point) Len() int {
+	return len(points)
+}
+func (points []*Point) Swap(i, j int) {
+	points[i], points[j] = points[j], points[i]
+}
+func (points []*Point) Less(i, j int) bool {
+	return (points[i].g + points[i].h) < (points[j].g + points[j].h)
+}
+
+func addToOpenedList(point *Point) {
+	openedList = append(openedList, point)
+	sort.Sort(openedList)
 }
